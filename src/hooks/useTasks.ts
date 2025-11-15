@@ -34,6 +34,7 @@ const INITIAL_METRICS: Metrics = {
   performanceGrade: 'Needs Improvement',
 };
 
+// Module-scope guard to prevent duplicate initial loads (covers React StrictMode double-mount)
 let __tasksInitialLoadDone = false;
 
 export function useTasks(): UseTasksState {
@@ -63,8 +64,11 @@ export function useTasks(): UseTasksState {
     });
   }
 
+  // Initial load: public JSON -> fallback generated dummy
   useEffect(() => {
+    // Module guard: prevents duplicate initial load across strict-mode double-mounts
     if (__tasksInitialLoadDone) {
+      // If the initial load already ran, just update loading state and exit.
       setLoading(false);
       return;
     }
@@ -102,7 +106,9 @@ export function useTasks(): UseTasksState {
     };
   }, []);
 
-  
+  // NOTE: Removed the opportunistic second fetch effect that appended duplicates.
+  // That effect caused duplicate tasks during fast remounts / StrictMode in dev.
+  // If you later want a guarded re-load, add an effect that checks a guard before appending.
 
   const derivedSorted = useMemo<DerivedTask[]>(() => {
     const withRoi = tasks.map(withDerived);
