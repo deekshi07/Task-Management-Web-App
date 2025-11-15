@@ -10,7 +10,7 @@
     "type-check": "tsc --noEmit"
   },
   "engines": {
-    "node": "18.x"
+    "node": "22.x"
   },
   "dependencies": {
     "@emotion/react": "^11.13.3",
