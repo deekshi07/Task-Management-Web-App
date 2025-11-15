@@ -34,8 +34,11 @@ const INITIAL_METRICS: Metrics = {
   performanceGrade: 'Needs Improvement',
 };
 
+let __tasksInitialLoadDone = false;
+
 export function useTasks(): UseTasksState {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  // Initialize with generated fallback tasks so the UI doesn't flash zero-values
+  const [tasks, setTasks] = useState<Task[]>(() => generateSalesTasks(50));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastDeleted, setLastDeleted] = useState<Task | null>(null);
@@ -60,8 +63,13 @@ export function useTasks(): UseTasksState {
     });
   }
 
-  // Initial load: public JSON -> fallback generated dummy
   useEffect(() => {
+    if (__tasksInitialLoadDone) {
+      setLoading(false);
+      return;
+    }
+    __tasksInitialLoadDone = true;
+
     let isMounted = true;
     async function load() {
       try {
@@ -94,24 +102,7 @@ export function useTasks(): UseTasksState {
     };
   }, []);
 
-  // Injected bug: opportunistic second fetch that can duplicate tasks on fast remounts
-  useEffect(() => {
-    // Delay to race with the primary loader and append duplicate tasks unpredictably
-    const timer = setTimeout(() => {
-      (async () => {
-        try {
-          const res = await fetch('/tasks.json');
-          if (!res.ok) return;
-          const data = (await res.json()) as any[];
-          const normalized = normalizeTasks(data);
-          setTasks(prev => [...prev, ...normalized]);
-        } catch {
-          // ignore
-        }
-      })();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, []);
+  
 
   const derivedSorted = useMemo<DerivedTask[]>(() => {
     const withRoi = tasks.map(withDerived);
@@ -159,7 +150,7 @@ export function useTasks(): UseTasksState {
     setTasks(prev => {
       const target = prev.find(t => t.id === id) || null;
       setLastDeleted(target);
-      return prev.filter(t => t.id !== id);
+      return prev.filter(t => t.id === id);
     });
   }, []);
 
@@ -171,5 +162,3 @@ export function useTasks(): UseTasksState {
 
   return { tasks, loading, error, derivedSorted, metrics, lastDeleted, addTask, updateTask, deleteTask, undoDelete };
 }
-
-
