@@ -165,4 +165,71 @@ export function computeCohortRevenue(tasks: ReadonlyArray<Task>): Array<{ week: 
   return rows.sort((a, b) => a.week.localeCompare(b.week));
 }
 
+/* ------------------------------------------------------------------------
+   NEW: safe ROI & stable sort utilities
+   (ADDED — original functions above unchanged)
+   ------------------------------------------------------------------------ */
 
+/**
+ * Return a safe ROI number. If inputs are invalid or timeTaken <= 0, returns 0.
+ */
+export function safeRoi(revenue?: number | null, timeTaken?: number | null): number {
+  const rev = Number.isFinite(Number(revenue)) ? Number(revenue) : 0;
+  const time = Number.isFinite(Number(timeTaken)) ? Number(timeTaken) : 0;
+  if (time <= 0) return 0;
+  return rev / time;
+}
+
+/**
+ * computeROISafe mirrors computeROI signature but ensures safety (avoids Infinity/NaN).
+ * Returns number | null to stay compatible with code expecting nulls (if desired).
+ */
+export function computeROISafe(revenue: number, timeTaken: number): number | null {
+  const rev = Number(revenue ?? 0);
+  const time = Number(timeTaken ?? 0);
+  if (!Number.isFinite(rev) || !Number.isFinite(time) || time <= 0) return null;
+  return rev / time;
+}
+
+/**
+ * Deterministic/stable sort for DerivedTask arrays.
+ * Order: ROI (desc) -> priorityWeight (desc) -> createdAt (desc) -> id (lex) -> title (alphabetical)
+ */
+export function sortTasksStable(tasks: ReadonlyArray<DerivedTask>): DerivedTask[] {
+  if (!Array.isArray(tasks)) return [];
+  const arr = tasks.slice(); // shallow copy, don't mutate original
+
+  arr.sort((a, b) => {
+    // 1) ROI (desc). Use safe number for comparison.
+    const roiA = typeof a.roi === 'number' && Number.isFinite(a.roi) ? a.roi : safeRoi(a.revenue, a.timeTaken);
+    const roiB = typeof b.roi === 'number' && Number.isFinite(b.roi) ? b.roi : safeRoi(b.revenue, b.timeTaken);
+    if (roiA !== roiB) return roiB - roiA;
+
+    // 2) priorityWeight (desc)
+    const pa = a.priorityWeight ?? computePriorityWeight(a.priority);
+    const pb = b.priorityWeight ?? computePriorityWeight(b.priority);
+    if (pa !== pb) return pb - pa;
+
+    // 3) createdAt (newer first)
+    const aCreated = a.createdAt ? Date.parse(a.createdAt) : NaN;
+    const bCreated = b.createdAt ? Date.parse(b.createdAt) : NaN;
+    if (Number.isFinite(aCreated) && Number.isFinite(bCreated) && aCreated !== bCreated) {
+      return bCreated - aCreated;
+    }
+
+    // 4) id (lexicographic)
+    if (a.id && b.id && a.id !== b.id) return a.id.localeCompare(b.id);
+
+    // 5) title (case-insensitive)
+    const ta = (a.title ?? '').toString();
+    const tb = (b.title ?? '').toString();
+    if (ta !== tb) return ta.localeCompare(tb, undefined, { sensitivity: 'base' });
+
+    return 0;
+  });
+
+  return arr;
+}
+
+// Export alias for convenience
+export const sortTasksStableExport = sortTasksStable;

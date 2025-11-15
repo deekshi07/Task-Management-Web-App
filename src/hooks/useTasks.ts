@@ -7,7 +7,7 @@ import {
   computeTimeEfficiency,
   computeTotalRevenue,
   withDerived,
-  sortTasks as sortDerived,
+  sortTasksStable as sortDerived,
 } from '@/utils/logic';
 // Local storage removed per request; keep everything in memory
 import { generateSalesTasks } from '@/utils/seed';
@@ -23,6 +23,7 @@ interface UseTasksState {
   updateTask: (id: string, patch: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   undoDelete: () => void;
+  clearLastDeleted: () => void;
 }
 
 const INITIAL_METRICS: Metrics = {
@@ -44,6 +45,10 @@ export function useTasks(): UseTasksState {
   const [error, setError] = useState<string | null>(null);
   const [lastDeleted, setLastDeleted] = useState<Task | null>(null);
   const fetchedRef = useRef(false);
+
+  // Timer ref for auto-clearing lastDeleted (undo window)
+  const lastDeletedTimerRef = useRef<number | null>(null);
+  const SNACKBAR_DURATION = 5000; // ms — sync this with your Snackbar autoHideDuration
 
   function normalizeTasks(input: any[]): Task[] {
     const now = Date.now();
@@ -82,14 +87,7 @@ export function useTasks(): UseTasksState {
         const data = (await res.json()) as any[];
         const normalized: Task[] = normalizeTasks(data);
         let finalData = normalized.length > 0 ? normalized : generateSalesTasks(50);
-        // Injected bug: append a few malformed rows without validation
-        if (Math.random() < 0.5) {
-          finalData = [
-            ...finalData,
-            { id: undefined, title: '', revenue: NaN, timeTaken: 0, priority: 'High', status: 'Todo' } as any,
-            { id: finalData[0]?.id ?? 'dup-1', title: 'Duplicate ID', revenue: 9999999999, timeTaken: -5, priority: 'Low', status: 'Done' } as any,
-          ];
-        }
+        // Note: malformed-test rows exist in seed/fetch in your repo; keep them if desired
         if (isMounted) setTasks(finalData);
       } catch (e: any) {
         if (isMounted) setError(e?.message ?? 'Failed to load tasks');
@@ -106,9 +104,35 @@ export function useTasks(): UseTasksState {
     };
   }, []);
 
-  // NOTE: Removed the opportunistic second fetch effect that appended duplicates.
-  // That effect caused duplicate tasks during fast remounts / StrictMode in dev.
-  // If you later want a guarded re-load, add an effect that checks a guard before appending.
+  // Helpers for lastDeleted lifecycle
+  const clearLastDeleted = useCallback(() => {
+    if (lastDeletedTimerRef.current) {
+      window.clearTimeout(lastDeletedTimerRef.current);
+      lastDeletedTimerRef.current = null;
+    }
+    setLastDeleted(null);
+  }, []);
+
+  const scheduleClearLastDeleted = useCallback(() => {
+    if (lastDeletedTimerRef.current) {
+      window.clearTimeout(lastDeletedTimerRef.current);
+      lastDeletedTimerRef.current = null;
+    }
+    lastDeletedTimerRef.current = window.setTimeout(() => {
+      lastDeletedTimerRef.current = null;
+      setLastDeleted(null);
+    }, SNACKBAR_DURATION);
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (lastDeletedTimerRef.current) {
+        window.clearTimeout(lastDeletedTimerRef.current);
+        lastDeletedTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const derivedSorted = useMemo<DerivedTask[]>(() => {
     const withRoi = tasks.map(withDerived);
@@ -156,15 +180,24 @@ export function useTasks(): UseTasksState {
     setTasks(prev => {
       const target = prev.find(t => t.id === id) || null;
       setLastDeleted(target);
-      return prev.filter(t => t.id === id);
+      // FIXED: remove only the clicked task (previously logic kept only the clicked task)
+      const next = prev.filter(t => t.id !== id);
+      // schedule auto-clear of lastDeleted in case user doesn't undo
+      scheduleClearLastDeleted();
+      return next;
     });
-  }, []);
+  }, [scheduleClearLastDeleted]);
 
   const undoDelete = useCallback(() => {
     if (!lastDeleted) return;
     setTasks(prev => [...prev, lastDeleted]);
+    // Cancel scheduled clear if any and clear lastDeleted
+    if (lastDeletedTimerRef.current) {
+      window.clearTimeout(lastDeletedTimerRef.current);
+      lastDeletedTimerRef.current = null;
+    }
     setLastDeleted(null);
   }, [lastDeleted]);
 
-  return { tasks, loading, error, derivedSorted, metrics, lastDeleted, addTask, updateTask, deleteTask, undoDelete };
+  return { tasks, loading, error, derivedSorted, metrics, lastDeleted, addTask, updateTask, deleteTask, undoDelete, clearLastDeleted };
 }
