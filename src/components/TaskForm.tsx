@@ -33,6 +33,10 @@ export default function TaskForm({ open, onClose, onSubmit, existingTitles, init
   const [status, setStatus] = useState<Status | ''>('');
   const [notes, setNotes] = useState('');
 
+  // NEW: input error states
+  const [revenueError, setRevenueError] = useState<string | null>(null);
+  const [timeError, setTimeError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!open) return;
     if (initial) {
@@ -49,6 +53,8 @@ export default function TaskForm({ open, onClose, onSubmit, existingTitles, init
       setPriority('');
       setStatus('');
       setNotes('');
+      setRevenueError(null);
+      setTimeError(null);
     }
   }, [open, initial]);
 
@@ -62,23 +68,84 @@ export default function TaskForm({ open, onClose, onSubmit, existingTitles, init
   const canSubmit =
     !!title.trim() &&
     !duplicateTitle &&
-    typeof revenue === 'number' && revenue >= 0 &&
-    typeof timeTaken === 'number' && timeTaken > 0 &&
+    typeof revenue === 'number' && Number.isFinite(revenue) && revenue >= 0 &&
+    typeof timeTaken === 'number' && Number.isFinite(timeTaken) && timeTaken > 0 &&
     !!priority &&
     !!status;
 
+  const handleRevenueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    if (v === '') {
+      setRevenue('');
+      setRevenueError('Revenue is required');
+      return;
+    }
+    const num = Number(v);
+    if (!Number.isFinite(num) || num < 0) {
+      setRevenue(num);
+      setRevenueError('Enter a valid non-negative number');
+    } else {
+      setRevenue(num);
+      setRevenueError(null);
+    }
+  };
+
+  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    if (v === '') {
+      setTimeTaken('');
+      setTimeError('Time taken is required');
+      return;
+    }
+    const num = Number(v);
+    if (!Number.isFinite(num) || num <= 0) {
+      setTimeTaken(num);
+      setTimeError('Enter a positive number (> 0)');
+    } else {
+      setTimeTaken(num);
+      setTimeError(null);
+    }
+  };
+
   const handleSubmit = () => {
-    const safeTime = typeof timeTaken === 'number' && timeTaken > 0 ? timeTaken : 1; // auto-correct
-    const payload: Omit<Task, 'id'> & { id?: string } = {
+    const revNum = typeof revenue === 'number' ? revenue : NaN;
+    const timeNum = typeof timeTaken === 'number' ? timeTaken : NaN;
+
+    let valid = true;
+    if (!Number.isFinite(revNum) || revNum < 0) {
+      setRevenueError('Enter a valid non-negative number');
+      valid = false;
+    }
+    if (!Number.isFinite(timeNum) || timeNum <= 0) {
+      setTimeError('Enter a positive number (> 0)');
+      valid = false;
+    }
+    if (!valid) return;
+
+    const safeTime = timeNum > 0 ? timeNum : 1;
+
+    // Build payload including required createdAt and optional completedAt
+    const createdAt = initial?.createdAt ?? new Date().toISOString();
+    const completedAt = (status === 'Done')
+      ? (initial?.completedAt ?? new Date().toISOString())
+      : undefined;
+
+    const basePayload: Omit<Task, 'id'> & { id?: string } = {
       title: title.trim(),
-      revenue: typeof revenue === 'number' ? revenue : 0,
+      revenue: Number.isFinite(revNum) ? revNum : 0,
       timeTaken: safeTime,
       priority: ((priority || 'Medium') as Priority),
       status: ((status || 'Todo') as Status),
       notes: notes.trim() || undefined,
-      ...(initial ? { id: initial.id } : {}),
+      createdAt,
+      completedAt,
     };
-    onSubmit(payload);
+
+    if (initial && initial.id) {
+      basePayload.id = initial.id;
+    }
+
+    onSubmit(basePayload);
     onClose();
   };
 
@@ -101,19 +168,23 @@ export default function TaskForm({ open, onClose, onSubmit, existingTitles, init
               label="Revenue"
               type="number"
               value={revenue}
-              onChange={e => setRevenue(e.target.value === '' ? '' : Number(e.target.value))}
+              onChange={handleRevenueChange}
               inputProps={{ min: 0, step: 1 }}
               required
               fullWidth
+              error={!!revenueError}
+              helperText={revenueError ?? ' '}
             />
             <TextField
               label="Time Taken (h)"
               type="number"
               value={timeTaken}
-              onChange={e => setTimeTaken(e.target.value === '' ? '' : Number(e.target.value))}
+              onChange={handleTimeChange}
               inputProps={{ min: 1, step: 1 }}
               required
               fullWidth
+              error={!!timeError}
+              helperText={timeError ?? ' '}
             />
           </Stack>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
@@ -146,5 +217,3 @@ export default function TaskForm({ open, onClose, onSubmit, existingTitles, init
     </Dialog>
   );
 }
-
-

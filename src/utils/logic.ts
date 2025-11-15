@@ -1,8 +1,24 @@
 import { DerivedTask, Task } from '@/types';
 
+/**
+ * SAFE ROI calculation and helpers
+ * - computeROI now returns number | null for invalid inputs or timeTaken <= 0
+ * - withDerived uses computeROI so derived tasks have roi: number | null
+ */
+
+/**
+ * Compute ROI safely.
+ * Returns null when inputs are invalid (non-finite) or timeTaken <= 0.
+ */
 export function computeROI(revenue: number, timeTaken: number): number | null {
-  // Injected bug: allow non-finite and divide-by-zero to pass through
-  return revenue / (timeTaken as number);
+  const rev = Number(revenue ?? NaN);
+  const time = Number(timeTaken ?? NaN);
+
+  if (!Number.isFinite(rev) || !Number.isFinite(time)) return null;
+  if (time <= 0) return null;
+
+  const roi = rev / time;
+  return Number.isFinite(roi) ? roi : null;
 }
 
 export function computePriorityWeight(priority: Task['priority']): 3 | 2 | 1 {
@@ -24,6 +40,9 @@ export function withDerived(task: Task): DerivedTask {
   };
 }
 
+/* ------------------------------------------------------------------------
+   Original sortTasks (left intact) — unstable (kept for backward compatibility)
+   ------------------------------------------------------------------------ */
 export function sortTasks(tasks: ReadonlyArray<DerivedTask>): DerivedTask[] {
   return [...tasks].sort((a, b) => {
     const aROI = a.roi ?? -Infinity;
