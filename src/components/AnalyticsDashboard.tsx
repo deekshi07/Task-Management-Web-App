@@ -31,7 +31,7 @@ export default function AnalyticsDashboard({ tasks }: Props) {
             <BarChart
               height={240}
               xAxis={[{ scaleType: 'band', data: ['Todo', 'In Progress', 'Done'] }]}
-              series={[{ data: [funnel.todo, funnel.inProgress, funnel.done], color: '#4F6BED' }]}
+              series={[{ data: [funnel.todo, funnel.inProgress, funnel.done], color: '#e5f327ff' }]}
             />
           </Box>
           <Box>

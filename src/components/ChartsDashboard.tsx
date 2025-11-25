@@ -59,7 +59,7 @@ export default function ChartsDashboard({ tasks }: Props) {
             <BarChart
               height={240}
               xAxis={[{ scaleType: 'band', data: roiBuckets.map(b => b.label) }]}
-              series={[{ data: roiBuckets.map(b => b.count), color: '#e9e108ff' }]}
+              series={[{ data: roiBuckets.map(b => b.count), color: '#d4ce0eff' }]}
             />
           </Box>
         </Box>
