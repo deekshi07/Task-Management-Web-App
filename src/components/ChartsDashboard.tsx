@@ -42,7 +42,7 @@ export default function ChartsDashboard({ tasks }: Props) {
             <BarChart
               height={240}
               xAxis={[{ scaleType: 'band', data: revenueByPriority.map(d => d.priority) }]}
-              series={[{ data: revenueByPriority.map(d => d.revenue), color: '#4F6BED' }]}
+              series={[{ data: revenueByPriority.map(d => d.revenue), color: '#d8d106ff' }]}
             />
           </Box>
           <Box>
