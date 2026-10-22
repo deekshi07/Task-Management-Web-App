@@ -7,6 +7,7 @@
   <img src="https://img.shields.io/badge/Material_UI-v6-007FFF?style=for-the-badge&logo=mui&logoColor=white" alt="MUI" />
   <img src="https://img.shields.io/badge/MUI_X--Charts-7.20-blue?style=for-the-badge" alt="MUI X-Charts" />
   <img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="License" />
+  <a href="https://github.com/deekshi07/Task-Management-Web-App/actions/workflows/ci.yml"><img src="https://github.com/deekshi07/Task-Management-Web-App/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
 </p>
 
 A modern, high-performance task management and productivity web application built with **React 18**, **TypeScript**, **Vite**, and **Material UI**. TaskGlitch provides teams and individual developers with real-time task lifecycle tracking, workload distribution analytics via interactive charts, dynamic audit logs, and instant undo actions.
