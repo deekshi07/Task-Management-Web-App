@@ -1,6 +1,7 @@
 # 📊 TaskGlitch — Task Management & Analytics Dashboard
 
 <p align="center">
+  <a href="https://task-management-web-app-doea-5rg3psm9s-deekshi07s-projects.vercel.app"><img src="https://img.shields.io/badge/Live_App-Deployed_on_Vercel-success?style=for-the-badge&logo=vercel" alt="Live App" /></a>
   <img src="https://img.shields.io/badge/React-18.3-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
   <img src="https://img.shields.io/badge/TypeScript-5.6-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Vite-5.4-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
